@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}DroneX -- Log{% endblock %}
+{% block content %}
+
+<div class="map-stage"><div id="map"></div></div>
+
+<div class="topbar">
+  <div style="font-weight:600;padding-left:6px;">Flight Log</div>
+  <div class="fill"></div>
+  <div class="tb-badge" id="missionCount">0 missions</div>
+</div>
+
+<div class="content-page">
+  <div class="page-panel">
+    <h1>Past missions</h1>
+    <p class="dim">Good for a portfolio link -- share this page's URL directly.</p>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Address</th><th>AQI before</th><th>AQI after</th><th>Pollutant</th><th>Round trip (mi)</th><th>In range</th><th>Plan</th></tr>
+      </thead>
+      <tbody id="logRows"></tbody>
+    </table>
+    <p id="emptyMsg" class="dim" style="display:none;">No missions logged yet -- generate one from the Plan tab.</p>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function initMap() {
+  const map = L.map('map').setView([35.7796, -78.6382], 11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd', maxZoom: 20,
+  }).addTo(map);
+}
+
+async function loadLog() {
+  const res = await fetch('/api/history');
+  const log = await res.json();
+  document.getElementById('missionCount').textContent = log.length + ' mission' + (log.length === 1 ? '' : 's');
+  const rows = document.getElementById('logRows');
+  if (log.length === 0) { document.getElementById('emptyMsg').style.display = 'block'; return; }
+  log.slice().reverse().forEach(entry => {
+    const tr = document.createElement('tr');
+    const date = new Date(entry.created).toLocaleString();
+    const inRange = entry.range_info && entry.range_info.in_range;
+    if (inRange) tr.className = 'chosen';
+    tr.innerHTML = `
+      <td>${date}</td>
+      <td>${entry.address_resolved || entry.address}</td>
+      <td>${entry.aqi_before ?? '--'}</td>
+      <td>${entry.aqi_after ?? '--'}</td>
+      <td>${entry.aqi_param ?? '--'}</td>
+      <td>${entry.range_info ? entry.range_info.round_trip_miles : '--'}</td>
+      <td>${entry.range_info ? `<span class="badge ${inRange ? 'ok' : 'bad'}">${inRange ? 'YES' : 'NO'}</span>` : '--'}</td>
+      <td><a href="/api/plan/${entry.mission_id}">.plan</a></td>
+    `;
+    rows.appendChild(tr);
+  });
+}
+initMap();
+loadLog();
+</script>
+{% endblock %}
