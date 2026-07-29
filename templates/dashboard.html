@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}DroneX -- Live{% endblock %}
+{% block content %}
+
+<div class="map-stage"><div id="map"></div></div>
+
+<div class="topbar">
+  <div class="tb-toggle"><span class="pulse"></span>&nbsp;Live uplink</div>
+  <div class="fill"></div>
+  <div class="tb-badge" id="statusBadge">Waiting...</div>
+</div>
+
+<div class="card-stack">
+  <div class="glass-card">
+    <div class="card-head">
+      <div class="title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11a8 8 0 0 1 16 0"/><path d="M7.5 11a4.5 4.5 0 0 1 9 0"/><circle cx="12" cy="11" r="1.4" fill="currentColor" stroke="none"/><path d="M12 12.4V21"/></svg>
+        Onboard Telemetry
+      </div>
+      <span class="date-pill" id="lastUpdate">--</span>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="k">Temp</div><div class="v" id="t-temp">--&deg;C</div></div>
+      <div class="stat-cell"><div class="k">Humidity</div><div class="v" id="t-hum">--%</div></div>
+      <div class="stat-cell"><div class="k">Fan</div><div class="v" id="t-fan">--</div></div>
+      <div class="stat-cell"><div class="k">PM2.5</div><div class="v" id="t-pm25">--</div></div>
+      <div class="stat-cell"><div class="k">PM10</div><div class="v" id="t-pm10">--</div></div>
+      <div class="stat-cell"><div class="k">Mission</div><div class="v mono" id="t-mission" style="font-size:14px;">--</div></div>
+    </div>
+    <p class="dim" style="font-size:11px;margin:14px 0 0;">PM2.5/PM10 read <span class="mono">null</span> until the PMS5003's ~30s warm-up finishes after boot -- see <span class="mono">firmware/</span> for the onboard parsing.</p>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let map, marker;
+function initMap() {
+  map = L.map('map').setView([35.7796, -78.6382], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  }).addTo(map);
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/telemetry/latest');
+    const data = await res.json();
+    const badge = document.getElementById('statusBadge');
+    if (!data || !data.received_at) { badge.textContent = 'Waiting...'; return; }
+    badge.textContent = 'Live';
+    document.getElementById('t-temp').textContent = (data.temp_c ?? '--') + '\u00b0C';
+    document.getElementById('t-hum').textContent = (data.humidity_pct ?? '--') + '%';
+    document.getElementById('t-fan').textContent = data.fan_on ? 'ON' : 'OFF';
+    document.getElementById('t-pm25').textContent = data.pm25 ?? '--';
+    document.getElementById('t-pm10').textContent = data.pm10 ?? '--';
+    document.getElementById('t-mission').textContent = data.mission_id ?? '--';
+    document.getElementById('lastUpdate').textContent = new Date(data.received_at).toLocaleTimeString();
+
+    if (data.lat && data.lon) {
+      if (!marker) marker = L.marker([data.lat, data.lon]).addTo(map);
+      else marker.setLatLng([data.lat, data.lon]);
+      map.panTo([data.lat, data.lon]);
+    }
+  } catch (e) { console.error(e); }
+}
+initMap();
+poll();
+setInterval(poll, 3000);
+</script>
+{% endblock %}
