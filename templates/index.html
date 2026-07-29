@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}DroneX -- Planning{% endblock %}
+{% block content %}
+
+<div class="plan-shell">
+
+  <div class="plan-header">
+    <div class="ph-title">
+      <div class="ph-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 9v6l8 7 8-7V9l-8-7z" fill="#0a0a0d"/></svg>
+      </div>
+      <h1 id="pageTitle">Planning for --</h1>
+      <span class="ph-live" id="phLive"><span class="pulse"></span>Live mission in flight</span>
+    </div>
+    <div class="ph-actions">
+      <button class="btn-primary-grad" id="exportBtn" onclick="exportSelected()" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <div class="plan-toolbar">
+    <div class="pt-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+      <select id="address">
+        <option value="" disabled selected>Choose a location</option>
+        <option value="virginia">Virginia</option>
+        <option value="california">California</option>
+      </select>
+    </div>
+    <input type="number" id="range" class="pt-range" placeholder="Max mi" step="0.1">
+    <button class="btn-primary-grad" id="planBtn" onclick="planMission()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+      Plan mission
+    </button>
+    <div class="pt-stats" id="toolbarStats">1 drone &middot; 0 missions logged &middot; -- candidates compared</div>
+  </div>
+
+  <div class="plan-body" id="planBody">
+
+    <div class="list-col" id="listCol">
+      <div class="list-empty" id="listEmpty">No missions yet -- plan one above to get started.</div>
+    </div>
+
+    <div class="detail-col" id="detailCol">
+      <div class="detail-empty" id="detailEmpty">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M3 9h6"/></svg>
+        Select a mission from the list, or plan a new one, to see details here.
+      </div>
+      <div id="detailContent" style="display:none;">
+        <div class="d-head">
+          <div>
+            <div class="d-title">Mission #<span id="d-id">--</span></div>
+            <span class="status-pill" id="d-status"><span class="dot"></span><span id="d-status-label">--</span></span>
+          </div>
+          <div class="d-close" onclick="deselectMission()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </div>
+        </div>
+
+        <div class="d-grid-2">
+          <div><div class="d-k">Address</div><div class="d-v" id="d-address">--</div></div>
+          <div><div class="d-k">Pollutant</div><div class="d-v" id="d-pollutant">--</div></div>
+        </div>
+        <div class="d-grid-2">
+          <div><div class="d-k">Created</div><div class="d-v" id="d-created">--</div></div>
+          <div><div class="d-k">Peak AQI</div><div class="d-v" id="d-aqi">--</div></div>
+        </div>
+
+        <div class="d-section-title">Route</div>
+        <div class="route-box">
+          <div class="route-info">
+            <div class="route-row">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11a8 8 0 0 1 16 0"/><path d="M7.5 11a4.5 4.5 0 0 1 9 0"/><circle cx="12" cy="11" r="1.4" fill="currentColor" stroke="none"/><path d="M12 12.4V21"/></svg>
+              <span id="d-drone">DRN-01 &middot; home base</span>
+            </div>
+            <div class="route-row">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+              <span id="d-range-badge">-- miles round trip</span>
+            </div>
+            <div class="route-row">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              <span id="d-airspace-badge">Airspace not checked</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-section-title">Target Location</div>
+        <div class="addr-list">
+          <div class="addr-row"><span class="addr-dot"></span><span id="d-home-coords">--</span></div>
+          <div class="addr-row"><span class="addr-dot end"></span><span id="d-target-coords">--</span></div>
+        </div>
+        <div class="mini-map-box">
+          <div class="mini-map-label" id="miniMapLabel">--</div>
+          <button class="mini-expand-btn" id="miniExpandBtn" title="Focus target on main map">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+          </button>
+          <div id="miniMap"></div>
+        </div>
+
+        <a id="downloadLink" href="#" style="display:block;">
+          <button class="btn-secondary" style="width:100%;justify-content:center;margin-top:14px;">Download .plan for QGroundControl</button>
+        </a>
+      </div>
+    </div>
+
+    <div class="map-col">
+      <div id="planMap"></div>
+      <button class="map-tool-btn map-recenter-btn" id="recenterBtn" title="Recenter">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+      <button class="map-tool-btn map-expand-btn" id="expandBtn" title="Toggle full-width map">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+      </button>
+      <div id="targetFloatCard" class="target-float-card" style="display:none;">
+        <div class="tfc-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7V8z"/><path d="M3.3 6.3L12 11l8.7-4.7M12 11v10"/></svg>
+        </div>
+        <div>
+          <div class="tfc-title" id="tfcTitle">--</div>
+          <div class="tfc-sub" id="tfcSub">--</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="errorToast" class="map-popup-card" style="top:16px; left:50%; transform:translateX(-50%); display:none; border-color:var(--red); z-index:1500;"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
